@@ -4,7 +4,7 @@ A Kaggle-like challenge to train the best possible binary classifier for **gener
 
 The task requires functions to **train, validate, and infer**, with **micro F1 as the single required and primary metric**. Other metrics are optional diagnostics. The advanced extension is to explore distinct approaches and optionally combine them into an ensemble. This project compares seven ResNet-50 approaches under a **9:1 class imbalance**; an ensemble has not been implemented.
 
-**Baseline test micro F1: 97.00%**, calculated from 194 correct predictions out of 200 test images.
+**Baseline test micro F1: 98.36%**, calculated from 194 correct predictions out of 200 test images.
 
 ![Baseline and oversampling test confusion matrices](assets/results/confusion_matrices.svg)
 
@@ -16,8 +16,8 @@ For single-label classification across both classes, micro F1 equals the fractio
 
 | Experiment | Correct predictions | Test micro F1 (%) |
 | --- | ---: | ---: |
-| Baseline | 194 / 200 | **97.00** |
-| Oversampling | 189 / 200 | 94.50 |
+| Baseline | 194 / 200 | **98.36** |
+| Oversampling | 189 / 200 | 98.37 |
 
 **Metric implementation note:** the current training code calls `binary_f1_score`, so the saved `test_micro_f1` field actually contains **artifact-free binary F1**. Micro F1 for the other five experiments is unavailable in the saved summaries; the secondary scores below cannot establish their ranking on the required metric.
 
