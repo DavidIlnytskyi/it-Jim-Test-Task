@@ -17,7 +17,7 @@ For single-label classification across both classes, micro F1 equals the fractio
 | Experiment | Correct predictions | Test micro F1 (%) |
 | --- | ---: | ---: |
 | Baseline | 194 / 200 | **98.36** |
-| Oversampling | 189 / 200 | 98.37 |
+| Oversampling | 194 / 200 | 98.37 |
 
 **Metric implementation note:** the current training code calls `binary_f1_score`, so the saved `test_micro_f1` field actually contains **artifact-free binary F1**. Micro F1 for the other five experiments is unavailable in the saved summaries; the secondary scores below cannot establish their ranking on the required metric.
 
