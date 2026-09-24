@@ -41,23 +41,6 @@ Weighted BCE downweights the majority class's positive-target term because artif
 
 **Takeaway:** oversampling improved final validation artifact-free F1, but lowered test micro F1 from **97.00% to 94.50%** compared with the baseline.
 
-## Error analysis and thresholding
-
-Optional diagnostics below are calculated from the confusion matrices on **200 test images**:
-
-| Measure | Baseline | Oversampling |
-| --- | ---: | ---: |
-| Artifacts detected | 14 / 20 | 11 / 20 |
-| Artifact-free images incorrectly flagged | 0 / 180 | 2 / 180 |
-| Artifact recall | 70.00% | 55.00% |
-| Artifact F1 | 82.35% | 66.67% |
-| Macro F1 | 90.36% | 81.83% |
-
-The baseline misses six artifacts despite its **97.00% micro F1**, illustrating the effect of class imbalance. Since sigmoid scores represent the artifact-free class, raising the threshold flags more images as artifacts, trading recall against false alarms. **No threshold sweep or calibration was performed**; selecting a threshold by validation micro F1 remains future work.
-
-<details>
-<summary>Prediction examples and confident mistakes</summary>
-
 ![Correct baseline predictions and its highest-confidence mistakes](assets/results/prediction_gallery.png)
 
 Both displayed mistakes are artifacts predicted as artifact-free with scores rounding to 100.0%. These uncalibrated outputs show why confident errors need inspection alongside aggregate metrics.
