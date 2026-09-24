@@ -2,17 +2,20 @@
 """Generate README figures from saved ResNet-50 experiments.
 
 Install dependencies:
-    python -m pip install matplotlib numpy pillow torch torchvision
+    python -m pip install matplotlib numpy pillow torch torchvision face-recognition==1.3.0
 
-Generate all four figures (CPU by default; no model download or training):
+Generate all five figures (CPU by default; no model download or training):
     python generate_visualizations.py
 
 Generate just the two figures backed by saved JSON metrics:
     python generate_visualizations.py --metrics-only
 
+Generate only the face-extraction illustration (no PyTorch required):
+    python generate_visualizations.py --face-cropping-only
+
 Optional: --device cuda --batch-size 32 --output-dir assets/results
 Paths default to this script's directory, regardless of the working directory.
-Charts are exported as SVG and PNG; the prediction gallery is exported as PNG.
+Charts are exported as SVG and PNG; image galleries are exported as PNG.
 """
 
 from __future__ import annotations
@@ -252,13 +255,82 @@ def plot_prediction_gallery(paths, targets, baseline_predictions, output_dir):
     save_figure(fig, output_dir, "prediction_gallery", formats=("png",))
 
 
+def plot_face_cropping(data_dir, output_dir):
+    """Illustrate the notebook's first-face crop without changing source images."""
+    try:
+        import face_recognition
+    except ImportError as exc:
+        raise RuntimeError(
+            "Face-cropping visualization requires face-recognition==1.3.0. Install it with "
+            "'python -m pip install face-recognition==1.3.0'."
+        ) from exc
+    from matplotlib.patches import Rectangle
+
+    paths = sorted(data_dir.glob("*.png"))
+    if not paths:
+        raise ValueError(f"No PNG images found in {data_dir}")
+    examples = []
+    # Pick one detectable example per class, deterministically by filename.
+    for label in (0, 1):
+        candidates = [p for p in paths if p.stem.rsplit("_", 1)[-1] == str(label)]
+        for path in candidates:
+            image = face_recognition.load_image_file(path)
+            # Explicitly preserve the face-recognition 1.3.0 defaults used in the notebook.
+            locations = face_recognition.face_locations(
+                image, number_of_times_to_upsample=1, model="hog",
+            )
+            if not locations:
+                continue
+            top, right, bottom, left = locations[0]
+            crop = image[top:bottom, left:right]
+            if crop.size:
+                examples.append((path, label, image, locations[0], crop))
+                break
+        else:
+            print(f"No detectable {CLASS_NAMES[label]} example found in {data_dir}")
+    if not examples:
+        raise ValueError(f"No faces detected in labeled images in {data_dir}")
+
+    fig, axes = plt.subplots(len(examples), 3, figsize=(12, 4 * len(examples) + 1),
+                             squeeze=False)
+    for row, (path, label, image, location, crop) in enumerate(examples):
+        top, right, bottom, left = location
+        axes[row, 0].imshow(image)
+        axes[row, 1].imshow(image)
+        axes[row, 1].add_patch(Rectangle(
+            (left, top), right - left, bottom - top,
+            linewidth=2.5, edgecolor=ORANGE, facecolor="none",
+        ))
+        axes[row, 2].imshow(crop)
+        titles = [f"Original · {CLASS_NAMES[label]}",
+                  "Detect face · first bounding box", "Extract face crop"]
+        for ax, title in zip(axes[row], titles):
+            ax.set_title(title, pad=12)
+            ax.axis("off")
+        axes[row, 0].text(0.5, -0.05, path.name, transform=axes[row, 0].transAxes,
+                          ha="center", fontsize=8, color="#64748B")
+        axes[row, 2].text(0.5, -0.05, f"{crop.shape[1]} × {crop.shape[0]} pixels",
+                          transform=axes[row, 2].transAxes, ha="center",
+                          fontsize=9, color="#64748B")
+    fig.suptitle("Face extraction before classification", fontsize=18, fontweight="bold")
+    fig.text(0.5, 0.025,
+             "face_recognition.face_locations (default HOG detector) → first detected face → crop\n"
+             "Images without a detected face are skipped. Crops are shown before the ResNet input transform.",
+             ha="center", fontsize=10, color="#64748B")
+    fig.tight_layout(rect=(0, 0.085, 1, 0.95), h_pad=3)
+    save_figure(fig, output_dir, "face_cropping", formats=("png",))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--runs-dir", type=Path, default=ROOT / "runs")
     parser.add_argument("--data-dir", type=Path, default=ROOT / "data" / "test",
                         help="Directory containing labeled test PNGs")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "assets" / "results")
-    parser.add_argument("--metrics-only", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--metrics-only", action="store_true")
+    mode.add_argument("--face-cropping-only", action="store_true",
+                      help="Illustrate face extraction without loading metrics or checkpoints")
     parser.add_argument("--device", default="cpu", help="PyTorch device, e.g. cpu or cuda")
     parser.add_argument("--batch-size", type=int, default=16)
     args = parser.parse_args()
@@ -266,11 +338,15 @@ def main():
         parser.error("--batch-size must be positive")
     configure_style()
     try:
-        results = read_results(args.runs_dir)
         args.output_dir.mkdir(parents=True, exist_ok=True)
+        if args.face_cropping_only:
+            plot_face_cropping(args.data_dir, args.output_dir)
+            return
+        results = read_results(args.runs_dir)
         plot_comparison(results, args.output_dir)
         plot_learning_curves(results, args.output_dir)
         if not args.metrics_only:
+            plot_face_cropping(args.data_dir, args.output_dir)
             paths, targets, predictions = run_inference(args, results)
             plot_confusion_matrices(targets, predictions, args.output_dir)
             plot_prediction_gallery(paths, targets, predictions["baseline"], args.output_dir)
