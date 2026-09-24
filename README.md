@@ -67,7 +67,6 @@ Filename labels → class-wise validation split → training duplicate cleanup
 - **Preprocessing:** the pretrained weights' transform provides a 224 × 224 center crop and ImageNet normalization. Augmentation adds horizontal flips (`p=0.5`) and mild color jitter, and also changes the training resize/crop path.
 - **Face extraction:** the default HOG detector in `face_recognition` supplies the first face crop. Images without a detected face are skipped, so evaluation coverage may differ.
 
-<details>
 <summary>Face-cropping examples</summary>
 
 ![Original portraits, detected face boxes, and extracted crops](assets/results/face_cropping.png)
